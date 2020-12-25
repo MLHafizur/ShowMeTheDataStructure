@@ -1,95 +1,79 @@
-class LRU_Cache(object):
-    def __init__(self, capacity):
-        # Initialize class variables
-        self.bucket_array = [None] * (capacity + 1)
-        self.num_of_elements = 0
-        self.queue = []
-    def get(self, key):
-        if len(self.bucket_array) == 1: #capacity is zero
-            return -1
-        # Retrieve item from provided key. Return -1 if nonexistent. 
-        if key > len(self.bucket_array):
-            return -1
-        if self.bucket_array[key] != None:
-            self.num_of_elements -=1 
-            if self.queue[0] == key: 
-                self.queue.append(self.queue.pop(0))
-            return self.bucket_array[key]
-        else:#collision
-            return -1
+from collections import OrderedDict
+
+
+class LRU_Cache(OrderedDict):
+
+    def __init__(self, capacity: int = 5):
+        self.capacity = capacity
 
     def set(self, key, value):
-        if len(self.bucket_array) == 1:
-            print("Warnning: cannot perform operations on 0 capacity cache")
-            return
-        # Set the value if the key is not present in the cache. If the cache is at capacity remove the oldest item. 
-        if key < len(self.bucket_array) and  self.bucket_array[key] == None:
-            self.bucket_array[key] = value
-            self.num_of_elements += 1
-            self.queue.append(key)
-        else:#cache full
-            oldest = self.queue.pop(0)
-            self.bucket_array[oldest] = None
-            self.bucket_array.extend([None])
-            self.bucket_array[key] = value
+        # If cache at capacity, pop the least-recent item
+        if len(self) >= self.capacity:
+            self.popitem(last=False)
+        
+        # If key is present, reset to track access order
+        if key in self:
+            del self[key]
+        self[key] = value
+
+    def get(self, key):
+        # OrderedDict will raise a KeyError if key not present
+        # Handle this behavior
+        try:
+            value = self[key]
+            
+            # Reset key, value pair to track access order
+            del self[key]
+            self[key] = value 
+
+            return value
+        except:
+            return -1
 
 
-# Test1
-our_cache = LRU_Cache(5)
+if __name__ == '__main__':
+    our_cache = LRU_Cache(5)
 
-our_cache.set(1, 1)
-our_cache.set(2, 2)
-our_cache.set(3, 3)
-our_cache.set(4, 4)
-#print(our_cache.tail.data)   
-#print(our_cache.head.data)   
+    # Fill cache
+    our_cache.set(1, 1)
+    our_cache.set(2, 2)
+    our_cache.set(3, 3)
+    our_cache.set(4, 4)
 
-print(our_cache.get(1))       
-# expected output: 1
-print(our_cache.get(2))    
-# expected output: 2
-print(our_cache.get(9))        
-# expected output: -1 
+    # Test behavior when returning existing keys
+    print(our_cache.get(1)) # should print 1
+    print(our_cache.get(2)) # should print 2
 
-#print(our_cache.tail.data)
-#print(our_cache.head.data)
-our_cache.set(5, 5) 
-our_cache.set(6, 6)
-#print(our_cache.tail.data)
-#print(our_cache.head.data)
+    # Test behavior for unset keys
+    print(our_cache.get(9)) # should print -1
 
-print(our_cache.get(3))    
-# expected output: -1 
-print(our_cache.get(6))    
-# expected output: 6
-print(our_cache.get(1))    
-# expected output: 1
+    # Fill cache so that LRU falls out
+    our_cache.set(5, 5) 
+    our_cache.set(6, 6)
 
-print('\n-----------------------------------\n')
+    # Test expected beahvior for least recent value
+    print(our_cache.get(3)) # should print -1
 
-#Test 2
-our_cache = LRU_Cache(3)
-our_cache.set(0, 0)
-our_cache.set(1, 1)
-our_cache.set(2, 2)
 
-our_cache.set(1, 10)
-our_cache.set(0, 5)
-our_cache.set(2, 17)
+    # Empty Cache
+    cache_2 = LRU_Cache()
 
-print(our_cache.get(0))
-# expected output: 5
-print(our_cache.get(1))
-# expected output: 10
-print(our_cache.get(2))
-# expected output: 17
+    # Cache capacity should initialize to 5
+    print(cache_2.capacity)
 
-print('\n-----------------------------------\n')
+    # Should return -1 for missing value
+    print(cache_2.get(1))
 
-#Test 3
-our_cache = LRU_Cache(0)
-our_cache.set(1, 1)
-# expected output: "Can't perform operations on 0 capacity cache"
-print(our_cache.get(17))
-# expected output: -1
 
+    # Test insertion of non-integer values
+    cache_3 = LRU_Cache(capacity=2)
+
+    cache_3.set('a', 1)
+    cache_3.set('b', 2)
+    cache_3.set('c', 3)
+
+    # Should return 3
+    print(cache_3.get('c'))
+
+    # Should return -1, as value fell out when at capacity
+    print(cache_3.get('a'))
